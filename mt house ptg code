@@ -1,0 +1,47 @@
+DROP table IF EXISTS jdickinson1.mt_house_ptg_myv_phone_attempts;
+CREATE table jdickinson1.mt_house_ptg_myv_phone_attempts
+AS (
+WITH myv_phone_contacts_total AS (
+SELECT
+	a.person_id
+	, a.myc_van_id
+    , a.myv_van_id
+	, a.contacts_contact_id
+  	, a.datetime_canvassed
+	, a.contact_type_name 
+	, a.contact_type_id
+	, a.committee_name 
+	, a.result_name
+	
+FROM 	
+	phoenix_demsdlcc_vansync_derived.contacts_myv a 
+WHERE
+	a.state_code = 'MT'
+	AND 
+		a.contact_type_name = 'Phone'
+  	AND 
+    	(a.datetime_canvassed LIKE '2020-%' OR a.datetime_canvassed LIKE '2019-12-3%')
+ORDER BY a.date_canvassed DESC)
+
+
+
+SELECT
+	c.committee_name
+    , LEFT((date_trunc('week', c.datetime_canvassed)) :: varchar(1024), 10) as week_of 
+    , COUNT(DISTINCT(c.contacts_contact_id)) as contact_attempts 
+FROM
+	myv_phone_contacts_total c 
+WHERE
+	c.committe_name IN ('2020 HD 51 Anne Giuliano', 'HD 47 Rep. Kathy Kelker', 'HD 60 Rep. Laurie Bishop', '2020 HD 64 Brian Popiel', 'HD 89 Katie Sullivan', '2020 HD 79 Ed Coleman', '2020 HD 61 Brian Close', '2020 HD 62 Ed Stafman', '2020 HD 65 Kelly Kortum', '2020 HD 96 Dakota Hileman', '2020 HD 20 Melissa Smith', 'HD 05 Dave Fern','HD 49 Emma Kerr-Carpenter','2020 HD 96 Loni Conley','2020 HD 03 Debo Powers','2020 HD 44 Terry Dennis','2020 HD 94 Jim McLean','2020 HD 52 Hannah Olson','2020 HD 67 Colette Campbell','HD 91 Connie Keogh','2020 HD 63 Alice Buckley','2020 HD 07 Ross Frazier','HD 26 Casey Schreiner','2020 HD 26 Helena Lovick','HD 50 Jade Bahr','HD 65 Chris Pope','2020 HD 22 Matt Rains','HD 96 Tom Winter','HD 25 Jasmine Krotkov','2020 HD 28 Krystal Steinmetz','2020 HD 92 Tom Browder','HD 94 Kim Dudik','2020 HD 64 Josh Seckinger','HD 28 Jacob Bachmeier','2020 HD 54 Ryan Thomsen','2020 HD 97 LouAnn Hansen','2020 HD 22 Jasmine Taylor','HD 48 Jessica Karjala','HD 81 Mary Caferro','HD 23 Brad Hamlett','HD 24 Barbara Bessette','2020 HD 93 Lisa Pavlock','HD 84 Rep. Mary Ann Dunwell','HD 75 Bryher Herak','HD 63 Rep. Zach Brown','HD 79 Rob Farris-Olsen','2020 HD 40 Kris Spanjian','2020 HD 10 Jennifer Allen','HD 82 Rep. Moffie Funk','2020 HD 76 Donavon Hawk')
+GROUP BY 1,2
+ORDER BY 1,2)
+
+
+now that the table is created, use the select statement below to export the ptg
+
+
+SELECT
+	*
+FROM 
+	jdickinson1.mt_house_ptg_myv_phone_attempts
+ORDER BY 1,2;
