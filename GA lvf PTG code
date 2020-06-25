@@ -1,0 +1,64 @@
+DROP table IF EXISTS jdickinson1.GA_lvf_ptg_myv_phone_attempts;
+CREATE table jdickinson1.GA_lvf_ptg_myv_phone_attempts
+AS (
+WITH myv_phone_contacts_total AS (
+SELECT
+	a.person_id
+	, a.myc_van_id
+    , a.myv_van_id
+	, a.contacts_contact_id
+  	, a.datetime_canvassed
+	, a.contact_type_name 
+	, a.contact_type_id
+	, a.committee_name 
+	, a.result_name
+
+FROM 	
+	phoenix_demsdlcc_vansync_derived.contacts_myv a 
+-- going to want to think about how to get current date to automate this (although might not be relevant for proof of concept)
+WHERE
+	a.state_code = 'GA'
+	AND 
+		a.contact_type_name = 'Phone'
+  	AND 
+    	(a.datetime_canvassed LIKE '2020-%' OR a.datetime_canvassed LIKE '2019-12-3%')
+ORDER BY a.date_canvassed DESC)
+/* Seems like this code gets us largely accurate phone attempts for our targeted LD's
+Let's check the ID's now before moving to the actual report
+-- I've added in the sum(case) clause in this select statement in order to get the number of contacts, since GA does not have a msq. 
+*/ 
+SELECT
+	c.committee_name
+    , LEFT((date_trunc('week', c.datetime_canvassed)) :: varchar(1024), 10) as week_of 
+    , COUNT(DISTINCT(c.contacts_contact_id)) as contact_attempts 
+    ,SUM(CASE WHEN canvass_status = 'Canvassed' THEN 1 ELSE 0 END) AS canvassed_count
+
+FROM
+	myv_phone_contacts_total c 
+WHERE
+	c.committee_name IN ('HD 137 Debbie Buckner', 'HD 075 Mike Glanton', 'HD 089 Bee Nguyen','HD 109 Regina Lewis Ward','HD 065 Mandisha Thomas','HD 111 El-Mahdi Holly',
+		'HD 083 Becky Evans','HD 119 Jonathan Wallace','HD 061 Roger Bruce','HD 107 Shelly Hutchinson','HD 081 Scott Holcomb','HD 040 Erick Allen','HD 080 Matthew Wilson'
+		,'HD 108 Jasmine Clark','HD 084 Renitta Shannon','SD 40 Sally Harrell','HD 042 Teri Anulewicz','HD 086 Michele Henson','HD 063 Debra Bazemore','HD 035 Kyle Rinaudo'
+,'HD 118 Spencer Frye','HD 095 Beth Moore','HD 101 Sam Park','SD 39 Nikema Williams','HD 039 Erica Thomas','HD 104 Andrea Stephenson','HD 106 Emily Leslie'
+,'HD 143 James Beverly','HD 043 Luisa Wakeman','HD 037 Mary Frances Williams','HD 151 Joyce Barlow','HD 132 Bob Trammell','HD 038 David Wilkerson','HD 052 Shea Roberts'
+,'HD 050 Angelika Kausche','HD 079 Mike Wilensky','HD 053 Sheila Jones','SD 33 Michael Rhett','HD 102 Gregg Kennard','SD 10 Emanuel Jones','SD 32 Christine Triebsch'
+,'HD 065 Sharon Beasley Teague','HD 105 Donna McLeod','HD 179 Julie Jordan','HD 113 Pam Dickerson','SD 06 Jennifer Auer Jordan','HD 153 CaMia Hopson','SD 27 Brooke Griffiths'
+,'HD 039 Terry Cummings','HD 074 Yasmin Neal','HD 083 Audrey Maloof','HD 106 Rebecca Mitchell','HD 138 Levi Barner','HD 138 Marcus Arnett','HD 117 Mokah Jasmine Johnson','SD 41 YT Bell','SD 09 Nikki Merritt'
+,'SD 38 Devin Barrington Ward','HD 030 Leigh Miller','SD 51 June Krise','HD 057 Stacey Evans','SD 48 Mary Lyn Kurish','SD 17 Kelly Rose','SD 45 Lindsey Acciarito','HD 056 Mesha Mainor','HD 163 Anne Allen Westbrook'
+,'HD 099 Jorge Granados','SD 09 Gabe Okoye','SD 38 Michael Carson','HD 091 Vernon Jones','HD 065 Amber Doss-Hunter','SD 48 Michelle Au','HD 044 Connie DiCicco','SD 23 Ceretta Smith','SD 38 Tania Robinson','HD 056 Josh McNair'
+,'HD 020 Ginny Lennox','HD 057 Alex Wan','HD 035 Lisa Campbell','HD 163 Mac Sims','HD 089 Marcia Ridley','HD 009 Sharon Ravert','SD 48 Josh Uddin','SD 30 Montenia Edwards','SD 41 Kimberly Jackson','HD 025 Christa Olenczak'
+,'SD 14 Brittany Bengert','SD 45 Matielyn Jones','HD 099 Marvin Lim','HD 164 Jeff Rayno','SD 35 Kelly Johnson','HD 034 Priscilla Smith','SD 30 Afoma Okafor','HD 086 Zulma Lopez','HD 045 Sara Ghazal','SD 56 Sarah Beeson'
+,'HD 071 Jill Prouty','HD 049 Ken Lawler','HD 046 Shirley Ritchie','HD 084 Harmel Codi','HD 155 Lethia Kittrell','HD 078 Attania Jean-Funny','SD 14 Travis Johnson','HD 056 Darryl Terry','HD 164 Marcus Thompson'
+,'HD 047 Anthia Owens Carter','HD 086 LaDena Bolton','HD 008 Dave Cooper','SD 08 Treva Gear','SD 41 Mohammed Hossain','HD 055 Frederick Quinn','HD 097 Mary Campbell','HD 057 Kyle Lamont','HD 145 Nincoe Bryd'
+,'HD 057 Jenne Shepherd','HD 104 Nakita Hemingway','HD 091 Rhonda Taylor','SD 44 Gail Davenport','SD 15 Ed Harbison','SD 38 Horacena Tate')
+GROUP BY 1,2
+ORDER BY 1,2)
+
+
+--now that the table is created, use the below select statement to export
+
+SELECT
+	*
+FROM 
+	jdickinson1.GA_LVF_ptg_myv_phone_attempts
+ORDER BY 1,2;
