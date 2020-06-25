@@ -1,0 +1,53 @@
+-- DROP TABLE IF EXISTS jdickinson1.nc_senate_ptg_myv_phone_attempts;
+DROP table IF EXISTS jdickinson1.mt_senate_ptg_myv_phone_attempts;
+CREATE table jdickinson1.mt_senate_ptg_myv_phone_attempts
+AS (
+WITH myv_phone_contacts_total AS (
+SELECT
+	a.person_id
+	, a.myc_van_id
+    , a.myv_van_id
+	, a.contacts_contact_id
+  	, a.datetime_canvassed
+	, a.contact_type_name 
+	, a.contact_type_id
+	, a.committee_name 
+	, a.result_name
+
+FROM 	
+	phoenix_demsdlcc_vansync_derived.contacts_myv a 
+-- going to want to think about how to get current date to automate this (although might not be relevant for proof of concept)
+WHERE
+	a.state_code = 'MT'
+	AND 
+		a.contact_type_name = 'Phone'
+  	AND 
+    	(a.datetime_canvassed LIKE '2020-%' OR a.datetime_canvassed LIKE '2019-12-3%')
+ORDER BY a.date_canvassed DESC)
+/* Seems like this code gets us largely accurate phone attempts for our targeted LD's
+Let's check the ID's now before moving to the actual report
+
+*/ 
+SELECT
+	c.committee_name
+    , LEFT((date_trunc('week', c.datetime_canvassed)) :: varchar(1024), 10) as week_of 
+    , COUNT(DISTINCT(c.contacts_contact_id)) as contact_attempts 
+    
+FROM
+	myv_phone_contacts_total c 
+WHERE
+	c.committee_name IN ('SD 24 Mary McNally', 'SD 32 Pat Flowers', 'SD 30 Dan Vermillion', '2020 SD 44 Margaret Gorski', 'SD 25 Sen. Jen Gross', 
+		'2020 SD 03 Guthrie Quist', 'SD 26 Rep. Margie MacDonald', 'SD 49 Sen. Diane Sands', 'SD 12 Carlie Boland', 'SD 38 Sen. Edie McClafferty', 'SD 11 Tom Jacobson'
+		,'SD 41 Janet Ellis','2020 SD 21 Rae Peppers','SD 50 Bryce Bennett','2020 SD 47 Chase Gay','2020 SD 46 Alexander Gray',
+		'2020 SD 40 Jacob Torgerson','2020 SD 40 Catherine Scott','2020 SD 18 Pat Mischel')
+GROUP BY 1,2
+ORDER BY 1,2)
+
+
+-- now that the table is created, use the select statement below to get the ptg info from the table.
+
+SELECT
+	*
+FROM 
+	jdickinson1.mt_senate_ptg_myv_phone_attempts
+ORDER BY 1,2;
