@@ -37,7 +37,7 @@ GROUP BY 1,2
 ORDER BY 1,2)
 
 
-now that the table is created, use the select statement below to export the ptg
+--now that the table is created, use the select statement below to export the ptg
 
 
 SELECT
