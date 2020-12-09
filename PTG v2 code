@@ -1,0 +1,339 @@
+--then do another for daily with yesterdays stuff
+DROP table IF EXISTS jdickinson1.pa_house_ptg_v2_yesterday_counts;
+CREATE table jdickinson1.pa_house_ptg_v2_yesterday_counts
+as(
+select
+a.committee_name
+, sum (case when c.master_survey_question_id = '4475' and c.master_survey_response_id in ('21827','21828')  then 1 else 0 end) as positive_ids_yesterday
+-- the above codes are for stong and lean support, but would have required another join to do by name
+,sum (case when a.contact_type_id in ('142','19','81','1','4','133')  then 1 else 0 end) as phone_attempts_yesterday
+-- a.contact_type_name in 'Distributed Call' ,'Auto Dial','Paid Call','Phone', 'Robocall','Relational call')
+,sum (case when a.contact_type_id in ('143','37','132') then 1 else 0 end) as text_attempts_yesterday
+--a.contact_type_name in ('Distributed Text', 'SMS Text', 'Relational Text')
+,sum (case when a.contact_type_id in ('36','2','145','130')then 1 else 0 end) as walk_attempts_yesterday
+--a.contact_type_name in ('Paid Walk','Walk', 'Relational Canvass', 'Lit drop')
+, COUNT(DISTINCT a.contacts_contact_id) AS count_unique_contacts_contact_id
+, COUNT(*) AS total_rows_count
+from phoenix_demsdlcc_vansync_derived.contacts_myv a 
+left join
+(
+SELECT
+	b.state_code
+  , b.contacts_contact_id
+  , b.master_survey_question_id
+  , b.master_survey_response_id
+FROM phoenix_demsdlcc_vansync_derived.responses_myv b
+WHERE b.master_survey_question_id = '4475'
+AND b.state_code = 'PA'
+) c
+on a.state_code || a.contacts_contact_id = c.state_code||c.contacts_contact_id
+where a.state_code = 'PA' 
+and
+(a.date_canvassed= ((LEFT(GETDATE()::varchar(1024), 10))::date - 1))
+and
+(a.committee_name in ('State House District 018','State House District 026','State House District 029','State House District 028','State House District 030','State House District 044'
+		,'State House District 055','State House District 105','State House District 106','State House District 114','State House District 119','State House District 120'
+		,'State House District 131','State House District 143','State House District 144','State House District 147','State House District 151','State House District 152'
+		,'State House District 155','State House District 158','State House District 160','State House District 165','State House District 168','State House District 176 - PD1'
+		,'State House District 178'))
+GROUP BY 1)
+;
+
+
+drop table if exists jdickinson1.pa_ptg_v2_attempts;
+create table jdickinson1.pa_ptg_v2_attempts
+as (
+with 
+myv_contacts_total as(
+SELECT
+	a.person_id
+	, a.myc_van_id
+    , a.myv_van_id
+	, a.contacts_contact_id
+  	, a.datetime_canvassed
+	, case 
+		When a.contact_type_name in ('Phone','Distributed Call' ,'Auto Dial','Paid Call','Robocall','Relational Call') then 'Phone' 
+		when a.contact_type_name in ('Distributed Text', 'SMS Text', 'Relational Text') then 'Text'
+		when a.contact_type_name in ('Paid Walk','Walk', 'Relational Canvass', 'Lit drop') then 'Walk'
+		end as type_of_contact
+	, a.committee_name 
+	, a.result_name
+FROM 	
+	phoenix_demsdlcc_vansync_derived.contacts_myv a 
+WHERE
+	a.state_code = 'PA'
+  	AND 
+    	(a.datetime_canvassed LIKE '2020-%' OR a.datetime_canvassed LIKE '2019-12-3%')
+ORDER BY a.date_canvassed DESC)
+
+SELECT
+	c.committee_name
+    , LEFT((date_trunc('week', c.datetime_canvassed)) :: varchar(1024), 10) as week_of 
+    ,c.type_of_contact
+    , COUNT(DISTINCT(c.contacts_contact_id)) as contact_attempts 
+FROM
+	myv_contacts_total c 
+WHERE
+	c.committee_name IN ('State House District 168','State House District 087 - PD2','State House District 034','State House District 154 PD2','State House District 008','State House District 081'
+,'State House District 045','State House District 173','State House District 199','State House District 155','State House District 193','State House District 044','State House District 013'
+,'State House District 187','State House District 094','State House District 021 ','State House District 108','State House District 179','State House District 134','State House District 131 ','State House District 086'
+,'State House District 132','State House District 191','State House District 180','State House District 142','State House District 136','State House District 059','State House District 111'
+,'State House District 153','State House District 156','State House District 087','State House District 065','State House District 043','State House District 178','State House District 115'
+,'State House District 171','State House District 018','State House District 031','State House District 163','State House District 011','State House District 101','State House District 121'
+,'State House District 005','State House District 060','State House District 141','State House District 183','State House District 103','State House District 010','State House District 181','State House District 025'
+,'State House District 026','State House District 080','State House District 169','State House District 073 ','State House District 195','State House District 122','State House District 118'
+,'State House District 047','State House District 120','State House District 019','State House District 189','State House District 028','State House District 024','State House District 093','State House District 175'
+,'State House District 149','State House District 014','State House District 100','State House District 056','State House District 167','State House District 165','State House District 137','State House District 037'
+,'State House District 105','State House District 016','State House District 102','State House District 064','State House District 172','State House District 051','State House District 066','State House District 041'
+,'State House District 123','State House District 006','State House District 110 ','State House District 188','State House District 104','State House District 128','State House District 075','State House District 177'
+,'State House District 082','State House District 023','State House District 196','State House District 140','State House District 197','State House District 067','State House District 144','State House District 152'
+,'State House District 063','State House District 130','State House District 035','State House District 198','State House District 092','State House District 070','State House District 020','State House District 096'
+,'State House District 184','State House District 069','State House District 125','State House District 162','State House District 166','State House District 097','State House District 146','State House District 079'
+,'State House District 117','State House District 147','State House District 151','State House District 159','State House District 083','State House District 095','State House District 099','State House District 116'
+,'State House District 190','State House District 192','State House District 052','State House District 038','State House District 076','State House District 148','State House District 055','State House District 050'
+,'State House District 029','State House District 089','State House District 046','State House District 161','State House District 201','State House District 182','State House District 061','State House District 088'
+,'State House District 124','State House District 138','State House District 071','State House District 091','State House District 053 ','State House District 176','State House District 026 PD1','State House District 022'
+,'State House District 012','State House District 139','State House District 170','State House District 127 - PD3','State House District 104 - PD1','State House District 054 ','State House District 154','State House District 036'
+,'State House District 107 ','State House District 126','State House District 036 PD1','State House District 005 PD1','State House District 158','State House District 186','State House District 112 ','State House District 154 PD1'
+,'State House District 042','State House District 017','State House District 036 - PD2','State House District 030 p','State House District 098 ','State House District 176 - PD1','State House District 164'
+,'State House District 032','State House District 194','State House District 142 PD1','State House District 068','State House District 048','State House District 033 ','State House District 160 - PD2','State House District 145' 
+,'State House District 109','State House District 106','State House District 127 - PD1','State House District 078 ','State House District 027 ','State House District 119 ','State House District 030','State House District 004'
+,'State House District 057','State House District 154 PD3','State House District 174','State House District 160 - PD1','State House District 200','State House District 074 ','State House District 072 ','State House District 039'
+,'State House District 127 ','State House District 114 ','State House District 038 - PD1','State House District 015','State House District 040 ','State House District 030 - PD1','State House District 202','State House District 087 - PD1'
+,'State House District 154 PD6','State House District 160','State House District 077 ','State House District 129 ','State House District 003','State House District 049','State House District 185','State House District 133','State House District 058'
+,'State House District 157','State House District 084 ','State House District 168 - PD1','State House District 062 ','State House District 002','State House District 113 ','State House District 150'
+,'State House District 085 ','State House District 143','State House District 127 - PD2','State House District 154 PD4','State House District 154 PD5'
+)
+GROUP BY 1,2,3
+ORDER BY 1,2,3)
+
+SELECT		
+	*
+FROM 
+	jdickinson1.jdickinson1.pa_ptg_v2_attempts
+ORDER BY 1,2;
+
+
+
+
+
+
+
+DROP Table IF EXISTS jdickinson1.pa_ptg_v2_ids;
+CREATE Table jdickinson1.pa_ptg_v2_ids
+AS (
+WITH new_id_totals AS (
+SELECT
+	a.myv_van_id
+	,a.committee_name
+	, a.datetime_canvassed
+	, a.state_house_district
+	, a.master_survey_question_id
+	, a.master_survey_response_id
+	, ROW_NUMBER() OVER(PARTITION BY a.myv_van_id || a.master_survey_question_id ORDER BY a.datetime_canvassed DESC) as rank
+FROM
+	phoenix_demsdlcc_vansync_derived.responses_myv a 
+
+WHERE
+	a.state_code = 'PA'
+	AND 
+		a.master_survey_question_id = '4475'
+	AND
+    	a.committee_name IN ('State House District 168','State House District 087 - PD2','State House District 034','State House District 154 PD2','State House District 008','State House District 081'
+,'State House District 045','State House District 173','State House District 199','State House District 155','State House District 193','State House District 044','State House District 013'
+,'State House District 187','State House District 094','State House District 021 ','State House District 108','State House District 179','State House District 134','State House District 131 ','State House District 086'
+,'State House District 132','State House District 191','State House District 180','State House District 142','State House District 136','State House District 059','State House District 111'
+,'State House District 153','State House District 156','State House District 087','State House District 065','State House District 043','State House District 178','State House District 115'
+,'State House District 171','State House District 018','State House District 031','State House District 163','State House District 011','State House District 101','State House District 121'
+,'State House District 005','State House District 060','State House District 141','State House District 183','State House District 103','State House District 010','State House District 181','State House District 025'
+,'State House District 026','State House District 080','State House District 169','State House District 073 ','State House District 195','State House District 122','State House District 118'
+,'State House District 047','State House District 120','State House District 019','State House District 189','State House District 028','State House District 024','State House District 093','State House District 175'
+,'State House District 149','State House District 014','State House District 100','State House District 056','State House District 167','State House District 165','State House District 137','State House District 037'
+,'State House District 105','State House District 016','State House District 102','State House District 064','State House District 172','State House District 051','State House District 066','State House District 041'
+,'State House District 123','State House District 006','State House District 110 ','State House District 188','State House District 104','State House District 128','State House District 075','State House District 177'
+,'State House District 082','State House District 023','State House District 196','State House District 140','State House District 197','State House District 067','State House District 144','State House District 152'
+,'State House District 063','State House District 130','State House District 035','State House District 198','State House District 092','State House District 070','State House District 020','State House District 096'
+,'State House District 184','State House District 069','State House District 125','State House District 162','State House District 166','State House District 097','State House District 146','State House District 079'
+,'State House District 117','State House District 147','State House District 151','State House District 159','State House District 083','State House District 095','State House District 099','State House District 116'
+,'State House District 190','State House District 192','State House District 052','State House District 038','State House District 076','State House District 148','State House District 055','State House District 050'
+,'State House District 029','State House District 089','State House District 046','State House District 161','State House District 201','State House District 182','State House District 061','State House District 088'
+,'State House District 124','State House District 138','State House District 071','State House District 091','State House District 053 ','State House District 176','State House District 026 PD1','State House District 022'
+,'State House District 012','State House District 139','State House District 170','State House District 127 - PD3','State House District 104 - PD1','State House District 054 ','State House District 154','State House District 036'
+,'State House District 107 ','State House District 126','State House District 036 PD1','State House District 005 PD1','State House District 158','State House District 186','State House District 112 ','State House District 154 PD1'
+,'State House District 042','State House District 017','State House District 036 - PD2','State House District 030 p','State House District 098 ','State House District 176 - PD1','State House District 164'
+,'State House District 032','State House District 194','State House District 142 PD1','State House District 068','State House District 048','State House District 033 ','State House District 160 - PD2','State House District 145' 
+,'State House District 109','State House District 106','State House District 127 - PD1','State House District 078 ','State House District 027 ','State House District 119 ','State House District 030','State House District 004'
+,'State House District 057','State House District 154 PD3','State House District 174','State House District 160 - PD1','State House District 200','State House District 074 ','State House District 072 ','State House District 039'
+,'State House District 127 ','State House District 114 ','State House District 038 - PD1','State House District 015','State House District 040 ','State House District 030 - PD1','State House District 202','State House District 087 - PD1'
+,'State House District 154 PD6','State House District 160','State House District 077 ','State House District 129 ','State House District 003','State House District 049','State House District 185','State House District 133','State House District 058'
+,'State House District 157','State House District 084 ','State House District 168 - PD1','State House District 062 ','State House District 002','State House District 113 ','State House District 150'
+,'State House District 085 ','State House District 143','State House District 127 - PD2','State House District 154 PD4','State House District 154 PD5'
+)
+ORDER BY a.datetime_canvassed DESC)
+
+
+
+SELECT
+	id.state_house_district 
+	, LEFT((date_trunc('week', id.datetime_canvassed)) :: varchar(1024), 10) as week_of
+	, COUNT(DISTINCT(id.myv_van_id)) as positive_ids
+FROM 
+	new_id_totals id
+WHERE
+	id.datetime_canvassed LIKE '2020%'
+	AND
+		id.rank = 1
+		and id.master_survey_response_id in ('21827','21828')
+		
+    
+GROUP BY 1,2
+ORDER BY 1,2);
+
+
+--select from the msq table, set up as an automated import
+
+SELECT
+	*
+FROM
+	jdickinson1.pa_ptg_v2_ids
+ORDER BY 1,2;
+
+
+select 
+a.state_house_district_latest
+ ,SUM(CASE WHEN a.date_voted IS NOT NULL THEN 1 ELSE 0 END) AS people_voted
+, SUM(CASE WHEN a.date_request_received IS NOT NULL THEN 1 ELSE 0 END) AS ballots_requested
+,sum(case when (a.date_canvassed= ((LEFT(GETDATE()::varchar(1024), 10))::date - 1)) then1 else zero end) as ballots_returned_yesterday
+FROM jdickinson1.ev_av_2020_step_03 a
+where
+a.state_code = 'PA'
+and (a.committee_name IN ('State House District 168','State House District 087 - PD2','State House District 034','State House District 154 PD2','State House District 008','State House District 081'
+,'State House District 045','State House District 173','State House District 199','State House District 155','State House District 193','State House District 044','State House District 013'
+,'State House District 187','State House District 094','State House District 021 ','State House District 108','State House District 179','State House District 134','State House District 131 ','State House District 086'
+,'State House District 132','State House District 191','State House District 180','State House District 142','State House District 136','State House District 059','State House District 111'
+,'State House District 153','State House District 156','State House District 087','State House District 065','State House District 043','State House District 178','State House District 115'
+,'State House District 171','State House District 018','State House District 031','State House District 163','State House District 011','State House District 101','State House District 121'
+,'State House District 005','State House District 060','State House District 141','State House District 183','State House District 103','State House District 010','State House District 181','State House District 025'
+,'State House District 026','State House District 080','State House District 169','State House District 073 ','State House District 195','State House District 122','State House District 118'
+,'State House District 047','State House District 120','State House District 019','State House District 189','State House District 028','State House District 024','State House District 093','State House District 175'
+,'State House District 149','State House District 014','State House District 100','State House District 056','State House District 167','State House District 165','State House District 137','State House District 037'
+,'State House District 105','State House District 016','State House District 102','State House District 064','State House District 172','State House District 051','State House District 066','State House District 041'
+,'State House District 123','State House District 006','State House District 110 ','State House District 188','State House District 104','State House District 128','State House District 075','State House District 177'
+,'State House District 082','State House District 023','State House District 196','State House District 140','State House District 197','State House District 067','State House District 144','State House District 152'
+,'State House District 063','State House District 130','State House District 035','State House District 198','State House District 092','State House District 070','State House District 020','State House District 096'
+,'State House District 184','State House District 069','State House District 125','State House District 162','State House District 166','State House District 097','State House District 146','State House District 079'
+,'State House District 117','State House District 147','State House District 151','State House District 159','State House District 083','State House District 095','State House District 099','State House District 116'
+,'State House District 190','State House District 192','State House District 052','State House District 038','State House District 076','State House District 148','State House District 055','State House District 050'
+,'State House District 029','State House District 089','State House District 046','State House District 161','State House District 201','State House District 182','State House District 061','State House District 088'
+,'State House District 124','State House District 138','State House District 071','State House District 091','State House District 053 ','State House District 176','State House District 026 PD1','State House District 022'
+,'State House District 012','State House District 139','State House District 170','State House District 127 - PD3','State House District 104 - PD1','State House District 054 ','State House District 154','State House District 036'
+,'State House District 107 ','State House District 126','State House District 036 PD1','State House District 005 PD1','State House District 158','State House District 186','State House District 112 ','State House District 154 PD1'
+,'State House District 042','State House District 017','State House District 036 - PD2','State House District 030 p','State House District 098 ','State House District 176 - PD1','State House District 164'
+,'State House District 032','State House District 194','State House District 142 PD1','State House District 068','State House District 048','State House District 033 ','State House District 160 - PD2','State House District 145' 
+,'State House District 109','State House District 106','State House District 127 - PD1','State House District 078 ','State House District 027 ','State House District 119 ','State House District 030','State House District 004'
+,'State House District 057','State House District 154 PD3','State House District 174','State House District 160 - PD1','State House District 200','State House District 074 ','State House District 072 ','State House District 039'
+,'State House District 127 ','State House District 114 ','State House District 038 - PD1','State House District 015','State House District 040 ','State House District 030 - PD1','State House District 202','State House District 087 - PD1'
+,'State House District 154 PD6','State House District 160','State House District 077 ','State House District 129 ','State House District 003','State House District 049','State House District 185','State House District 133','State House District 058'
+,'State House District 157','State House District 084 ','State House District 168 - PD1','State House District 062 ','State House District 002','State House District 113 ','State House District 150'
+,'State House District 085 ','State House District 143','State House District 127 - PD2','State House District 154 PD4','State House District 154 PD5'
+))
+group by 1
+order by 1
+
+
+
+
+
+
+
+
+
+Vol Shifts
+
+drop table if exists jdickinson1.PA_house_ptg_vol_shifts;
+Create table jdickinson1.PA_house_ptg_vol_shifts
+as
+(
+
+WITH shifts AS
+(
+SELECT
+	c.state_code
+	, c.committee_name
+	, SUM(CASE WHEN c.one_on_one_shift_completed IS TRUE THEN 1 ELSE 0 END) AS count_one_on_one_shifts_completed
+	, SUM(CASE WHEN c.phone_bank_shift_scheduled IS TRUE THEN 1 ELSE 0 END) AS count_phone_bank_shifts_scheduled
+	, SUM(CASE WHEN c.phone_bank_shift_completed IS TRUE THEN 1 ELSE 0 END) AS count_phone_bank_shifts_completed
+FROM
+(
+SELECT
+	a.*
+	, b.committee_name
+	, CASE WHEN (((a.event_type_name = 'Meeting' AND a.event_name LIKE '%1:%') OR a.event_type_name = 'One on One') AND a.mrr_status_name = 'Completed') THEN TRUE ELSE FALSE END AS one_on_one_shift_completed
+	, CASE WHEN (a.event_type_name LIKE '%Phone%' AND a.mrr_status_name IN ('Cancelled', 'Completed', 'Confirmed', 'No Show', 'Sched-Web', 'Scheduled')) THEN TRUE ELSE FALSE END AS phone_bank_shift_scheduled
+	, CASE WHEN (a.event_type_name LIKE '%Phone%' AND a.mrr_status_name IN ('Completed')) THEN TRUE ELSE FALSE END AS phone_bank_shift_completed
+
+FROM phoenix_demsdlcc_vansync_derived.event_attendees a
+INNER JOIN phoenix_demsdlcc_vansync.committees b ON a.state_code || a.committee_id = b.state_code || b.committee_id
+WHERE b.committee_type_name = 'State House'
+	AND a.state_code = 'PA'
+	AND
+		(
+			(a.event_type_name = 'Meeting' AND a.event_name LIKE '%1:%' AND a.mrr_status_name = 'Completed')
+			OR
+			(a.event_type_name = 'One on One' AND a.mrr_status_name = 'Completed')
+			OR
+			(a.event_type_name LIKE '%Phone%')
+		)
+	AND a.event_date::date >= ('2020-06-15')::date
+ORDER BY b.committee_name ASC
+) c
+GROUP BY 1, 2
+ORDER BY 1, 2
+)
+
+
+SELECT
+	a.state_code
+	, a.committee_type_name
+	, a.committee_name
+	, b.count_one_on_one_shifts_completed
+	, b.count_phone_bank_shifts_scheduled
+	, b.count_phone_bank_shifts_completed
+FROM phoenix_demsdlcc_vansync.committees a
+LEFT JOIN shifts b ON a.state_code || a.committee_name = b.state_code || b.committee_name
+WHERE a.state_code = 'PA'
+	AND a.committee_type_name = 'State House'
+	AND a.committee_name IN ('State House District 168','State House District 087 - PD2','State House District 034','State House District 154 PD2','State House District 008','State House District 081'
+,'State House District 045','State House District 173','State House District 199','State House District 155','State House District 193','State House District 044','State House District 013'
+,'State House District 187','State House District 094','State House District 021 ','State House District 108','State House District 179','State House District 134','State House District 131 ','State House District 086'
+,'State House District 132','State House District 191','State House District 180','State House District 142','State House District 136','State House District 059','State House District 111'
+,'State House District 153','State House District 156','State House District 087','State House District 065','State House District 043','State House District 178','State House District 115'
+,'State House District 171','State House District 018','State House District 031','State House District 163','State House District 011','State House District 101','State House District 121'
+,'State House District 005','State House District 060','State House District 141','State House District 183','State House District 103','State House District 010','State House District 181','State House District 025'
+,'State House District 026','State House District 080','State House District 169','State House District 073 ','State House District 195','State House District 122','State House District 118'
+,'State House District 047','State House District 120','State House District 019','State House District 189','State House District 028','State House District 024','State House District 093','State House District 175'
+,'State House District 149','State House District 014','State House District 100','State House District 056','State House District 167','State House District 165','State House District 137','State House District 037'
+,'State House District 105','State House District 016','State House District 102','State House District 064','State House District 172','State House District 051','State House District 066','State House District 041'
+,'State House District 123','State House District 006','State House District 110 ','State House District 188','State House District 104','State House District 128','State House District 075','State House District 177'
+,'State House District 082','State House District 023','State House District 196','State House District 140','State House District 197','State House District 067','State House District 144','State House District 152'
+,'State House District 063','State House District 130','State House District 035','State House District 198','State House District 092','State House District 070','State House District 020','State House District 096'
+,'State House District 184','State House District 069','State House District 125','State House District 162','State House District 166','State House District 097','State House District 146','State House District 079'
+,'State House District 117','State House District 147','State House District 151','State House District 159','State House District 083','State House District 095','State House District 099','State House District 116'
+,'State House District 190','State House District 192','State House District 052','State House District 038','State House District 076','State House District 148','State House District 055','State House District 050'
+,'State House District 029','State House District 089','State House District 046','State House District 161','State House District 201','State House District 182','State House District 061','State House District 088'
+,'State House District 124','State House District 138','State House District 071','State House District 091','State House District 053 ','State House District 176','State House District 026 PD1','State House District 022'
+,'State House District 012','State House District 139','State House District 170','State House District 127 - PD3','State House District 104 - PD1','State House District 054 ','State House District 154','State House District 036'
+,'State House District 107 ','State House District 126','State House District 036 PD1','State House District 005 PD1','State House District 158','State House District 186','State House District 112 ','State House District 154 PD1'
+,'State House District 042','State House District 017','State House District 036 - PD2','State House District 030 p','State House District 098 ','State House District 176 - PD1','State House District 164'
+,'State House District 032','State House District 194','State House District 142 PD1','State House District 068','State House District 048','State House District 033 ','State House District 160 - PD2','State House District 145' 
+,'State House District 109','State House District 106','State House District 127 - PD1','State House District 078 ','State House District 027 ','State House District 119 ','State House District 030','State House District 004'
+,'State House District 057','State House District 154 PD3','State House District 174','State House District 160 - PD1','State House District 200','State House District 074 ','State House District 072 ','State House District 039'
+,'State House District 127 ','State House District 114 ','State House District 038 - PD1','State House District 015','State House District 040 ','State House District 030 - PD1','State House District 202','State House District 087 - PD1'
+,'State House District 154 PD6','State House District 160','State House District 077 ','State House District 129 ','State House District 003','State House District 049','State House District 185','State House District 133','State House District 058'
+,'State House District 157','State House District 084 ','State House District 168 - PD1','State House District 062 ','State House District 002','State House District 113 ','State House District 150'
+,'State House District 085 ','State House District 143','State House District 127 - PD2','State House District 154 PD4','State House District 154 PD5'
+)
+ORDER BY 1, 2, 3
+
+)
+;
